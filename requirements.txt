@@ -1,0 +1,6 @@
+# Core runtime dependencies
+faster-whisper>=1.0.0
+
+# Optional extras
+# yt-dlp>=2024.1.1        # download source videos from a URL
+# anthropic>=0.40.0       # LLM-based clip ranking (--ranker claude)
