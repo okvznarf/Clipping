@@ -109,8 +109,13 @@ def build_parser() -> argparse.ArgumentParser:
                        choices=("auto", "edge", "sapi", "say", "espeak"))
     voice.add_argument("--voiceover-voice", default=None,
                        help="engine-specific voice name, e.g. en-US-AriaNeural")
-    voice.add_argument("--voiceover-rate", type=int, default=0,
-                       help="speech rate change, in percent")
+    voice.add_argument("--voiceover-style", default="energetic",
+                       choices=("energetic", "natural", "calm"),
+                       help="delivery preset")
+    voice.add_argument("--voiceover-rate", type=int, default=None,
+                       help="speech rate change in percent, overriding the style")
+    voice.add_argument("--voiceover-pitch", type=int, default=None,
+                       help="pitch change in percent, overriding the style")
     voice.add_argument("--voiceover-delay", type=float, default=0.3,
                        help="seconds before the narration starts")
     voice.add_argument("--duck", type=float, default=0.35,
@@ -178,7 +183,9 @@ def options_from_args(args: argparse.Namespace) -> Options:
         voiceover=args.voiceover,
         voiceover_engine=args.voiceover_engine,
         voiceover_voice=args.voiceover_voice,
+        voiceover_style=args.voiceover_style,
         voiceover_rate=args.voiceover_rate,
+        voiceover_pitch=args.voiceover_pitch,
         voiceover_delay=args.voiceover_delay,
         duck=args.duck,
         render_video=not args.dry_run,

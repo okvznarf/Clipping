@@ -56,7 +56,9 @@ class Options:
     voiceover: str | None = None
     voiceover_engine: str = "auto"
     voiceover_voice: str | None = None
-    voiceover_rate: int = 0
+    voiceover_style: str = "energetic"
+    voiceover_rate: int | None = None
+    voiceover_pitch: int | None = None
     voiceover_delay: float = 0.3
     duck: float = 0.35
     render_video: bool = True
@@ -150,7 +152,9 @@ def process(
             out_dir / "voiceover.wav",
             engine=options.voiceover_engine,
             voice=options.voiceover_voice,
+            style=options.voiceover_style,
             rate_percent=options.voiceover_rate,
+            pitch_percent=options.voiceover_pitch,
         )
 
     source_duration = info.duration if info else transcript.duration
