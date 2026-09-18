@@ -127,7 +127,7 @@ video, so you can check the selection in a second.
 --padding                breathing room added to each end (0.25s)
 --model                  whisper model: tiny/base/small/medium/large-v3
 --language               force a language code, skips detection
---device cuda            use a GPU (with --compute-type float16)
+--device cpu|cuda        force a device (default: auto-detect, CPU fallback)
 --size 1080x1920         output resolution
 --crf / --preset         x264 quality and speed
 --dry-run                pick clips, write captions, encode nothing
@@ -176,3 +176,10 @@ Transcription dominates. `small` on CPU runs roughly 5–10× faster than realti
 on a GPU, `--device cuda --compute-type float16` with `medium` or `large-v3` is
 both faster and noticeably more accurate at word timings, which is what caption
 sync depends on. Encoding five 30-second clips takes well under a minute.
+
+GPU transcription needs more than an NVIDIA card: CTranslate2 loads the cuBLAS
+and cuDNN runtime libraries, which are a separate install from the driver. The
+default `--device auto` tries the GPU and falls back to CPU with a warning if
+those libraries are missing, so a machine without them still works. Use
+`--device cpu` to skip the attempt, or `--device cuda` to make a missing runtime
+an error instead of a fallback.
