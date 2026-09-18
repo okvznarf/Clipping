@@ -100,6 +100,23 @@ def _parse_fps(rate: str | None) -> float:
         return 0.0
 
 
+def audio_duration(path: str | Path) -> float:
+    """Duration of a media file in seconds, without requiring a video stream."""
+    require_tool("ffprobe")
+    proc = run(
+        [
+            "ffprobe", "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "default=nokey=1:noprint_wrappers=1",
+            str(path),
+        ]
+    )
+    try:
+        return float(proc.stdout.strip())
+    except ValueError:
+        return 0.0
+
+
 def extract_audio(src: str | Path, dest: str | Path, sample_rate: int = 16000) -> Path:
     """Decode to the mono 16 kHz WAV that Whisper wants."""
     require_tool("ffmpeg")

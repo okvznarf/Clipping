@@ -102,6 +102,20 @@ def build_parser() -> argparse.ArgumentParser:
                          help="vertical placement, 0 (top) to 1 (bottom)")
     caption.add_argument("--no-uppercase", action="store_true")
 
+    voice = parser.add_argument_group("voiceover")
+    voice.add_argument("--voiceover", default=None,
+                       help="speak this line over the start of each clip")
+    voice.add_argument("--voiceover-engine", default="auto",
+                       choices=("auto", "edge", "sapi", "say", "espeak"))
+    voice.add_argument("--voiceover-voice", default=None,
+                       help="engine-specific voice name, e.g. en-US-AriaNeural")
+    voice.add_argument("--voiceover-rate", type=int, default=0,
+                       help="speech rate change, in percent")
+    voice.add_argument("--voiceover-delay", type=float, default=0.3,
+                       help="seconds before the narration starts")
+    voice.add_argument("--duck", type=float, default=0.35,
+                       help="clip volume under the narration (0-1)")
+
     modes = parser.add_argument_group("modes")
     modes.add_argument("--dry-run", action="store_true",
                        help="pick clips and write captions, but don't encode video")
@@ -161,6 +175,12 @@ def options_from_args(args: argparse.Namespace) -> Options:
         ranker=args.ranker,
         llm_weight=args.llm_weight,
         llm_model=args.llm_model,
+        voiceover=args.voiceover,
+        voiceover_engine=args.voiceover_engine,
+        voiceover_voice=args.voiceover_voice,
+        voiceover_rate=args.voiceover_rate,
+        voiceover_delay=args.voiceover_delay,
+        duck=args.duck,
         render_video=not args.dry_run,
         verbose=not args.quiet,
     )

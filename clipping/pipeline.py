@@ -53,6 +53,12 @@ class Options:
     ranker: str = "heuristic"   # or "claude"
     llm_weight: float = 0.6
     llm_model: str = "claude-sonnet-5"
+    voiceover: str | None = None
+    voiceover_engine: str = "auto"
+    voiceover_voice: str | None = None
+    voiceover_rate: int = 0
+    voiceover_delay: float = 0.3
+    duck: float = 0.35
     render_video: bool = True
     keep_ass: bool = True
     verbose: bool = True
@@ -133,6 +139,20 @@ def process(
         _log(options, "! no candidate windows matched the duration range")
         return []
 
+    # One narration file serves every clip in the run.
+    narration = None
+    if options.voiceover and options.render_video:
+        from .voiceover import synthesize
+
+        _log(options, f"→ narrating: {options.voiceover!r}")
+        narration = synthesize(
+            options.voiceover,
+            out_dir / "voiceover.wav",
+            engine=options.voiceover_engine,
+            voice=options.voiceover_voice,
+            rate_percent=options.voiceover_rate,
+        )
+
     source_duration = info.duration if info else transcript.duration
 
     # 'original' keeps the source framing, so captions must be laid out for the
@@ -195,6 +215,9 @@ def process(
                 fps=options.fps,
                 normalize_audio=options.normalize_audio,
                 has_audio=bool(info.has_audio) if info else True,
+                voiceover=narration,
+                voiceover_delay=options.voiceover_delay,
+                duck=options.duck,
             )
             spec.video_path = str(dest)
 

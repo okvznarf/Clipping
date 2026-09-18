@@ -95,6 +95,27 @@ python -m clipping talk.mp4 --font Inter --font-size 72 --highlight "#39FF14" \
 Line width is derived from the frame size and font size, so text stays inside
 the frame when you scale the font up.
 
+## Spoken hook (voiceover)
+
+`--voiceover` speaks a line over the start of each clip, ducking the clip's own
+audio underneath it so the narration stays intelligible over music:
+
+```bash
+python -m clipping talk.mp4 -n 1 \
+    --voiceover "Isaiah Rashad sang his heart out on this Tiny Desk performance."
+```
+
+There is no portable TTS engine, so the best one available is used:
+`edge-tts` (neural voices, `pip install edge-tts`) if installed, otherwise the
+speech synthesiser built into Windows or macOS, otherwise `espeak-ng` on Linux.
+Force one with `--voiceover-engine`, and pick a specific voice with
+`--voiceover-voice` (e.g. `en-US-AriaNeural` for edge, `Microsoft Zira Desktop`
+for Windows, `Samantha` for macOS).
+
+`--duck` sets how far the clip audio drops under the narration (0.35 by
+default), `--voiceover-delay` how long to wait before it starts, and
+`--voiceover-rate` speeds the delivery up or down by a percentage.
+
 ## Reframing
 
 `--layout` decides how a 16:9 source becomes 9:16:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .media import require_tool, run
+from .media import audio_duration, require_tool, run
 
 LAYOUTS = ("crop", "blur", "fit", "original")
 
@@ -68,6 +68,48 @@ def build_filter(
     return graph + "[v]"
 
 
+def build_audio_filter(
+    *,
+    has_audio: bool,
+    voiceover_duration: float,
+    delay: float = 0.3,
+    duck: float = 0.35,
+    tail: float = 0.35,
+    normalize: bool = True,
+) -> str:
+    """Graph that lays narration over the clip audio, ducking it underneath.
+
+    The bed drops to ``duck`` for the length of the narration plus a short tail,
+    then comes back up, which is what keeps a spoken hook intelligible over
+    music without simply muting the track.
+    """
+    delay_ms = max(0, int(delay * 1000))
+    stages: list[str] = []
+
+    if has_audio:
+        duck_end = delay + voiceover_duration + tail
+        stages.append(
+            f"[0:a]aformat=channel_layouts=stereo,"
+            f"volume='if(between(t,{delay:.3f},{duck_end:.3f}),{duck},1)':eval=frame[bed]"
+        )
+        stages.append(f"[1:a]aformat=channel_layouts=stereo,adelay={delay_ms}|{delay_ms}[vo]")
+        # duration=first keeps the clip's own length; normalize=0 stops amix
+        # halving both levels just because there are two inputs.
+        stages.append("[bed][vo]amix=inputs=2:duration=first:normalize=0[mixed]")
+        last = "[mixed]"
+    else:
+        stages.append(
+            f"[1:a]aformat=channel_layouts=stereo,adelay={delay_ms}|{delay_ms}[mixed]"
+        )
+        last = "[mixed]"
+
+    if normalize:
+        stages.append(f"{last}loudnorm=I=-16:TP=-1.5:LRA=11[aout]")
+    else:
+        stages.append(f"{last}anull[aout]")
+    return ";".join(stages)
+
+
 def render_clip(
     source: str | Path,
     dest: str | Path,
@@ -83,6 +125,9 @@ def render_clip(
     fps: int | None = 30,
     normalize_audio: bool = True,
     has_audio: bool = True,
+    voiceover: str | Path | None = None,
+    voiceover_delay: float = 0.3,
+    duck: float = 0.35,
 ) -> Path:
     """Encode one clip. Returns the written path."""
     require_tool("ffmpeg")
@@ -101,15 +146,29 @@ def render_clip(
     dest = dest.resolve()
 
     graph = build_filter(layout, width, height, subtitles=sub_arg)
+
     cmd = [
         "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
         "-ss", f"{max(0.0, start):.3f}",
         "-t", f"{max(0.1, duration):.3f}",
         "-i", str(source),
-        "-filter_complex", graph,
-        "-map", "[v]",
     ]
-    if has_audio:
+    if voiceover is not None:
+        voiceover = Path(voiceover).resolve()
+        cmd += ["-i", str(voiceover)]
+        graph += ";" + build_audio_filter(
+            has_audio=has_audio,
+            voiceover_duration=audio_duration(voiceover),
+            delay=voiceover_delay,
+            duck=duck,
+            normalize=normalize_audio,
+        )
+
+    cmd += ["-filter_complex", graph, "-map", "[v]"]
+
+    if voiceover is not None:
+        cmd += ["-map", "[aout]", "-c:a", "aac", "-b:a", "192k", "-ar", "48000"]
+    elif has_audio:
         cmd += ["-map", "0:a?"]
         if normalize_audio:
             cmd += ["-af", "loudnorm=I=-16:TP=-1.5:LRA=11"]

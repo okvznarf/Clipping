@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -116,3 +117,51 @@ def test_style_reaches_the_caption_file(tmp_path, sample_transcript, options):
     ass = (options.output_dir / "clip_01.ass").read_text()
     assert "Impact" in ass
     assert "&HFF00FF&" in ass
+
+
+def test_voiceover_is_synthesised_once_and_mixed_into_every_clip(
+    tmp_path, sample_transcript, options, monkeypatch
+):
+    import clipping.pipeline as pipeline
+    import clipping.voiceover as vo
+
+    calls: list[str] = []
+    rendered: list[dict] = []
+
+    def fake_synth(text, dest, **kwargs):
+        calls.append(text)
+        dest.write_bytes(b"wav")
+        return dest
+
+    monkeypatch.setattr(vo, "synthesize", fake_synth)
+    monkeypatch.setattr(
+        pipeline.render, "render_clip",
+        lambda src, dest, **kw: (rendered.append(kw), Path(dest).write_bytes(b""), Path(dest))[-1],
+    )
+    monkeypatch.setattr(pipeline.media, "probe", lambda p: type(
+        "I", (), {"duration": 999.0, "width": 1920, "height": 1080, "fps": 30.0, "has_audio": True}
+    )())
+
+    options.render_video = True
+    options.clips = 2
+    options.voiceover = "Isaiah Rashad sang his heart out."
+    source = tmp_path / "video.mp4"
+    source.write_bytes(b"stub")
+
+    specs = pipeline.process(source, options, transcript=sample_transcript)
+
+    assert len(calls) == 1, "narration should be synthesised once per run, not per clip"
+    assert len(rendered) == len(specs) >= 2
+    assert all(kw["voiceover"] is not None for kw in rendered)
+
+
+def test_no_voiceover_means_no_synthesis(tmp_path, sample_transcript, options, monkeypatch):
+    import clipping.voiceover as vo
+
+    def boom(*a, **k):
+        raise AssertionError("should not synthesise without --voiceover")
+
+    monkeypatch.setattr(vo, "synthesize", boom)
+    source = tmp_path / "video.mp4"
+    source.write_bytes(b"stub")
+    assert process(source, options, transcript=sample_transcript)
